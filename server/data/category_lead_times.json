@@ -1,0 +1,7 @@
+{
+  "Circuit Boards": { "lead_time_days": 10, "supplier": "ShenTech Circuits Ltd." },
+  "Sensors": { "lead_time_days": 14, "supplier": "Precision Sensor Supply Co." },
+  "Actuators": { "lead_time_days": 21, "supplier": "TorqueDrive Motors Inc." },
+  "Controllers": { "lead_time_days": 12, "supplier": "SiliconCore Components" },
+  "Power Supplies": { "lead_time_days": 18, "supplier": "VoltWorks Power Systems" }
+}

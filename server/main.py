@@ -2,7 +2,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
-from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders
+from datetime import datetime, timedelta
+from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders, category_lead_times
 
 app = FastAPI(title="Factory Inventory Management System")
 
@@ -80,6 +81,8 @@ class Order(BaseModel):
     actual_delivery: Optional[str] = None
     warehouse: Optional[str] = None
     category: Optional[str] = None
+    lead_time_days: Optional[int] = None
+    supplier: Optional[str] = None
 
 class DemandForecast(BaseModel):
     id: str
@@ -119,6 +122,89 @@ class CreatePurchaseOrderRequest(BaseModel):
     unit_cost: float
     expected_delivery_date: str
     notes: Optional[str] = None
+
+class RestockRecommendation(BaseModel):
+    sku: str
+    item_name: str
+    category: str
+    warehouse: Optional[str] = None
+    current_stock: int
+    forecasted_demand: int
+    shortfall: int
+    unit_cost: float
+    recommended_quantity: int
+    line_cost: float
+    supplier: str
+    lead_time_days: int
+
+class RestockRecommendationsResponse(BaseModel):
+    budget: float
+    total_cost: float
+    remaining_budget: float
+    max_lead_time_days: int
+    items: List[RestockRecommendation]
+    considered_count: int
+
+class RestockOrderItem(BaseModel):
+    sku: str
+    quantity: int
+
+class SubmitRestockOrderRequest(BaseModel):
+    budget: float
+    items: List[RestockOrderItem]
+
+DEFAULT_LEAD_TIME_INFO = {"lead_time_days": 15, "supplier": "General Parts Distributor"}
+
+def build_recommendations(budget: float) -> RestockRecommendationsResponse:
+    """Rank items with a demand shortfall by shortfall size and greedily fill the budget."""
+    inv_by_sku = {item['sku']: item for item in inventory_items}
+
+    candidates = []
+    for forecast in demand_forecasts:
+        inv = inv_by_sku.get(forecast['item_sku'])
+        if inv is None:
+            continue
+        shortfall = forecast['forecasted_demand'] - inv['quantity_on_hand']
+        if shortfall <= 0:
+            continue
+        cat_info = category_lead_times.get(inv['category'], DEFAULT_LEAD_TIME_INFO)
+        line_cost = round(shortfall * inv['unit_cost'], 2)
+        candidates.append(RestockRecommendation(
+            sku=inv['sku'],
+            item_name=inv['name'],
+            category=inv['category'],
+            warehouse=inv.get('warehouse'),
+            current_stock=inv['quantity_on_hand'],
+            forecasted_demand=forecast['forecasted_demand'],
+            shortfall=shortfall,
+            unit_cost=inv['unit_cost'],
+            recommended_quantity=shortfall,
+            line_cost=line_cost,
+            supplier=cat_info['supplier'],
+            lead_time_days=cat_info['lead_time_days']
+        ))
+
+    # Biggest shortfall first; SKU as a deterministic tiebreaker
+    candidates.sort(key=lambda c: (-c.shortfall, c.sku))
+
+    selected = []
+    running_total = 0.0
+    for c in candidates:
+        # Skip items that don't fit and keep checking cheaper items further down the list,
+        # rather than stopping at the first one that doesn't fit.
+        if running_total + c.line_cost <= budget:
+            selected.append(c)
+            running_total += c.line_cost
+
+    max_lead = max((c.lead_time_days for c in selected), default=0)
+    return RestockRecommendationsResponse(
+        budget=budget,
+        total_cost=round(running_total, 2),
+        remaining_budget=round(budget - running_total, 2),
+        max_lead_time_days=max_lead,
+        items=selected,
+        considered_count=len(candidates)
+    )
 
 # API endpoints
 @app.get("/")
@@ -178,6 +264,66 @@ def get_backlog():
         item_dict["has_purchase_order"] = has_po
         result.append(item_dict)
     return result
+
+@app.get("/api/restocking/recommendations", response_model=RestockRecommendationsResponse)
+def get_restock_recommendations(budget: float = 0):
+    """Recommend items to restock from the demand forecast, ranked by shortfall and filtered to fit the budget"""
+    if budget < 0:
+        raise HTTPException(status_code=400, detail="Budget must be non-negative")
+    return build_recommendations(budget)
+
+@app.post("/api/restocking/order", response_model=Order, status_code=201)
+def submit_restock_order(request: SubmitRestockOrderRequest):
+    """Submit a restocking order built from recommended items; appends to the in-memory orders list"""
+    if not request.items:
+        raise HTTPException(status_code=400, detail="No items to order")
+
+    inv_by_sku = {item['sku']: item for item in inventory_items}
+    order_items = []
+    total_value = 0.0
+    categories_seen = set()
+    supplier_names = set()
+    lead_time_days = 0
+
+    for line in request.items:
+        inv = inv_by_sku.get(line.sku)
+        if inv is None:
+            raise HTTPException(status_code=404, detail=f"Unknown SKU: {line.sku}")
+        if line.quantity <= 0:
+            raise HTTPException(status_code=400, detail=f"Invalid quantity for {line.sku}")
+
+        line_value = round(line.quantity * inv['unit_cost'], 2)
+        order_items.append({
+            "sku": inv['sku'],
+            "name": inv['name'],
+            "quantity": line.quantity,
+            "unit_price": inv['unit_cost']
+        })
+        total_value += line_value
+        categories_seen.add(inv['category'])
+
+        cat_info = category_lead_times.get(inv['category'], DEFAULT_LEAD_TIME_INFO)
+        lead_time_days = max(lead_time_days, cat_info['lead_time_days'])
+        supplier_names.add(cat_info['supplier'])
+
+    now = datetime.utcnow()
+    order = {
+        "id": str(len(orders) + 1),
+        "order_number": f"RSK-{now.strftime('%Y')}-{len(orders) + 1:04d}",
+        "customer": "Internal Restocking Order",
+        "items": order_items,
+        "status": "Submitted",
+        "order_date": now.isoformat(timespec='seconds'),
+        "expected_delivery": (now + timedelta(days=lead_time_days)).isoformat(timespec='seconds'),
+        "total_value": round(total_value, 2),
+        "actual_delivery": None,
+        "warehouse": None,
+        "category": next(iter(categories_seen)) if len(categories_seen) == 1 else None,
+        "lead_time_days": lead_time_days,
+        "supplier": next(iter(supplier_names)) if len(supplier_names) == 1 else "Multiple Suppliers"
+    }
+    orders.append(order)
+    return order
 
 @app.get("/api/dashboard/summary")
 def get_dashboard_summary(

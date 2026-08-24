@@ -6,6 +6,7 @@ export default {
     orders: '注文',
     finance: '財務',
     demandForecast: '需要予測',
+    restocking: '補充',
     companyName: '触媒コンポーネンツ',
     subtitle: '在庫管理システム'
   },
@@ -112,6 +113,7 @@ export default {
     onTimeDelivery: '定時配達',
     itemsCount: '{count}件',
     quantity: '数量',
+    submittedOrders: '提出済み注文',
     table: {
       orderNumber: '注文番号',
       orderId: '注文ID',
@@ -125,7 +127,9 @@ export default {
       totalValue: '合計金額',
       status: 'ステータス',
       expectedDelivery: '予定配達日',
-      actualDelivery: '実際の配達日'
+      actualDelivery: '実際の配達日',
+      leadTime: 'リードタイム',
+      supplier: 'サプライヤー'
     }
   },
 
@@ -188,6 +192,41 @@ export default {
     }
   },
 
+  // Restocking
+  restocking: {
+    title: '補充',
+    description: '需要予測に基づいた予算対応の補充推奨事項を生成',
+    budgetLabel: '補充予算',
+    budgetHint: 'スライダーをドラッグするか、正確な金額を入力してください',
+    totalCost: '合計コスト',
+    remainingBudget: '残り予算',
+    itemsRecommended: '推奨品目数',
+    itemsRecommendedRatio: '{total}件中{shown}件',
+    maxLeadTime: '最大リードタイム',
+    days: '日',
+    recommendations: '推奨事項',
+    placeOrder: '注文する',
+    placingOrder: '注文処理中...',
+    noRestockingNeeded: '補充は不要です - すべての在庫が十分にあります。',
+    increaseBudget: '推奨事項を表示するには予算を増やしてください。',
+    orderSuccess: '注文 {orderNumber} が正常に作成されました。',
+    orderSuccessNote: 'このデモでは、注文提出時に在庫数量が減算されません。そのため、提出後も同じ不足が表示される場合があります。',
+    viewOrder: '注文を見る',
+    table: {
+      sku: 'SKU',
+      itemName: '品目名',
+      category: 'カテゴリ',
+      currentStock: '現在庫',
+      forecastedDemand: '予測需要',
+      shortfall: '不足数',
+      recommendedQty: '推奨数量',
+      unitCost: '単価',
+      lineCost: '小計',
+      supplier: 'サプライヤー',
+      leadTime: 'リードタイム（日）'
+    }
+  },
+
   // Filters
   filters: {
     timePeriod: '期間',
@@ -206,7 +245,8 @@ export default {
     backordered: 'バックオーダー',
     inStock: '在庫あり',
     lowStock: '在庫僅少',
-    adequate: '適量'
+    adequate: '適量',
+    submitted: '提出済み'
   },
 
   // Trends
