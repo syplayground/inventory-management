@@ -6,6 +6,7 @@ export default {
     orders: 'Orders',
     finance: 'Finance',
     demandForecast: 'Demand Forecast',
+    restocking: 'Restocking',
     companyName: 'Catalyst Components',
     subtitle: 'Inventory Management System'
   },
@@ -112,6 +113,7 @@ export default {
     onTimeDelivery: 'On-Time Delivery',
     itemsCount: '{count} items',
     quantity: 'Qty',
+    submittedOrders: 'Submitted Orders',
     table: {
       orderNumber: 'Order Number',
       orderId: 'Order ID',
@@ -125,7 +127,9 @@ export default {
       totalValue: 'Total Value',
       status: 'Status',
       expectedDelivery: 'Expected Delivery',
-      actualDelivery: 'Actual Delivery'
+      actualDelivery: 'Actual Delivery',
+      leadTime: 'Lead Time',
+      supplier: 'Supplier'
     }
   },
 
@@ -188,6 +192,41 @@ export default {
     }
   },
 
+  // Restocking
+  restocking: {
+    title: 'Restocking',
+    description: 'Generate budget-aware restocking recommendations based on demand forecasts',
+    budgetLabel: 'Restocking Budget',
+    budgetHint: 'Drag the slider or enter an exact amount',
+    totalCost: 'Total Cost',
+    remainingBudget: 'Remaining Budget',
+    itemsRecommended: 'Items Recommended',
+    itemsRecommendedRatio: '{shown} of {total} items',
+    maxLeadTime: 'Max Lead Time',
+    days: 'days',
+    recommendations: 'Recommendations',
+    placeOrder: 'Place Order',
+    placingOrder: 'Placing Order...',
+    noRestockingNeeded: 'No restocking needed - everything is sufficiently stocked.',
+    increaseBudget: 'Increase your budget to see recommendations.',
+    orderSuccess: 'Order {orderNumber} placed successfully.',
+    orderSuccessNote: "Note: this demo doesn't decrement inventory stock levels on submission, so recommendations may still show the same shortfalls afterward.",
+    viewOrder: 'View Order',
+    table: {
+      sku: 'SKU',
+      itemName: 'Item Name',
+      category: 'Category',
+      currentStock: 'Current Stock',
+      forecastedDemand: 'Forecasted Demand',
+      shortfall: 'Shortfall',
+      recommendedQty: 'Recommended Qty',
+      unitCost: 'Unit Cost',
+      lineCost: 'Line Cost',
+      supplier: 'Supplier',
+      leadTime: 'Lead Time (days)'
+    }
+  },
+
   // Filters
   filters: {
     timePeriod: 'Time Period',
@@ -206,7 +245,8 @@ export default {
     backordered: 'Backordered',
     inStock: 'In Stock',
     lowStock: 'Low Stock',
-    adequate: 'Adequate'
+    adequate: 'Adequate',
+    submitted: 'Submitted'
   },
 
   // Trends
